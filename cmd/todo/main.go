@@ -1,47 +1,61 @@
 package main
 
 import (
-	"flag"
+	"fmt"
+	"os"
 
 	"github.com/HxX2/todo/pkg/todo"
+	"github.com/spf13/cobra"
 )
 
 func main() {
 	t := todo.Init()
 
-	addPtr := flag.String("a", "", "add a task")
-	remPtr := flag.Int("r", 0, "remove a task")
-	togglePtr := flag.Int("t", 0, "toggle done for a task")
-	editPtr := flag.Bool("e", false, "edite todo file")
-	listDonePtr := flag.Bool("ld", false, "list done tasks")
-	listUndonePtr := flag.Bool("lu", false, "list undone tasks")
-	hideProgressPtr := flag.Bool("hp", false, "hide progress bar")
+	var newTask string
+	var remTaskNum int
+	var toggleTaskNum int
+	var editFlag bool
+	var listDone bool
+	var listUndone bool
+	var hideProgress bool
 
-	flag.Parse()
+	var rootCmd = &cobra.Command{
+		Use:   "todo",
+		Short: "Todo CLI application",
+		Run: func(cmd *cobra.Command, args []string) {
+			t.ListDone = !listUndone
+			t.ListUndone = !listDone
+			t.ShowProgress = !hideProgress
 
-	remTaskNum := *remPtr
-	newTask := *addPtr
-	toggleTaskNum := *togglePtr
-	editFlag := *editPtr
+			switch {
+			case remTaskNum != 0:
+				t.RemTask(remTaskNum)
+			case newTask != "":
+				t.AddTask(newTask)
+			case toggleTaskNum != 0:
+				t.ToggleTask(toggleTaskNum)
+			case editFlag:
+				t.OpenEditor()
+			case t.ListUndone:
+				t.PrintList()
+			case t.ListDone:
+				t.PrintList()
+			default:
+				t.PrintList()
+			}
+		},
+	}
 
-	t.ListDone = !*listUndonePtr
-	t.ListUndone = !*listDonePtr
-	t.ShowProgress = !*hideProgressPtr
+	rootCmd.Flags().StringVarP(&newTask, "add", "a", "", "add a task")
+	rootCmd.Flags().IntVarP(&remTaskNum, "remove", "r", 0, "remove a task")
+	rootCmd.Flags().IntVarP(&toggleTaskNum, "toggle", "t", 0, "toggle done for a task")
+	rootCmd.Flags().BoolVarP(&editFlag, "edit", "e", false, "edit todo file")
+	rootCmd.Flags().BoolVar(&listDone, "list-done", false, "list done tasks")
+	rootCmd.Flags().BoolVar(&listUndone, "list-undone", false, "list undone tasks")
+	rootCmd.Flags().BoolVar(&hideProgress, "hide-progress", false, "hide progress bar")
 
-	switch {
-	case remTaskNum != 0:
-		t.RemTask(remTaskNum)
-	case newTask != "":
-		t.AddTask(newTask)
-	case toggleTaskNum != 0:
-		t.ToggleTask(toggleTaskNum)
-	case editFlag:
-		t.OpenEditor()
-	case t.ListUndone:
-		t.PrintList()
-	case t.ListDone:
-		t.PrintList()
-	default:
-		t.PrintList()
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
