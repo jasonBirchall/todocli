@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/HxX2/todo/pkg/todo"
 	"github.com/gdamore/tcell/v2"
@@ -109,30 +108,51 @@ func main() {
 			})
 
 			app.SetRoot(removeTaskList, true).SetFocus(removeTaskList)
+
 		}).
 		AddItem("Toggle Task", "Toggle done for a task", 't', func() {
-			form := tview.NewForm()
-			form.
-				AddInputField("Task Number", "", 20, nil, nil).
-				AddButton("Toggle", func() {
-					taskNumStr := form.GetFormItemByLabel("Task Number").(*tview.InputField).GetText()
-					taskNum, err := strconv.Atoi(taskNumStr)
-					if err != nil {
-						showErrorModal(app, "Invalid task number", mainLayout)
-						return
-					}
-					err = t.ToggleTask(taskNum)
-					if err != nil {
-						showErrorModal(app, fmt.Sprintf("Error: %v", err), mainLayout)
-					} else {
-						updateTaskList(t, taskListView) // Refresh task list view
-					}
+			// Create a list of tasks to toggle
+			toggleTaskList := tview.NewList()
+			for i, task := range t.Tasks {
+				taskStatus := "[red]Undone"
+				if task.Done {
+					taskStatus = "[green]Done"
+				}
+				toggleTaskList.AddItem(fmt.Sprintf("%d. %s [%s]", i+1, task.Name, taskStatus), "", 0, nil)
+			}
+
+			// Set Vim-like navigation for the task toggling list
+			toggleTaskList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				switch event.Key() {
+				case tcell.KeyEnter: // Toggle the selected task's status
+					index := toggleTaskList.GetCurrentItem()
+					t.ToggleTask(index + 1)         // Tasks are 1-based, but the index is 0-based
+					updateTaskList(t, taskListView) // Refresh task list view
 					app.SetRoot(mainLayout, true).SetFocus(actionList)
-				}).
-				AddButton("Cancel", func() {
-					app.SetRoot(mainLayout, true).SetFocus(actionList)
-				})
-			app.SetRoot(form, true).SetFocus(form)
+					return nil
+				case tcell.KeyRune: // Check for character inputs
+					switch event.Rune() {
+					case 'j': // Move down
+						index := toggleTaskList.GetCurrentItem()
+						if index < toggleTaskList.GetItemCount()-1 {
+							toggleTaskList.SetCurrentItem(index + 1)
+						}
+						return nil
+					case 'k': // Move up
+						index := toggleTaskList.GetCurrentItem()
+						if index > 0 {
+							toggleTaskList.SetCurrentItem(index - 1)
+						}
+						return nil
+					case 'q': // Cancel toggling
+						app.SetRoot(mainLayout, true).SetFocus(actionList)
+						return nil
+					}
+				}
+				return event
+			})
+
+			app.SetRoot(toggleTaskList, true).SetFocus(toggleTaskList)
 		}).
 		AddItem("Quit", "Quit the application", 'q', func() {
 			app.Stop()
