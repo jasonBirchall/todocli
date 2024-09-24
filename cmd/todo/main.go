@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/HxX2/todo/pkg/todo"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -23,6 +24,23 @@ func main() {
 	// Create the main list for actions
 	actionList := tview.NewList()
 
+	// Add Vim-like keybindings for navigating the list
+	actionList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j': // Move down
+			index := actionList.GetCurrentItem()
+			if index < actionList.GetItemCount()-1 {
+				actionList.SetCurrentItem(index + 1)
+			}
+			return nil
+		case 'k': // Move up
+			index := actionList.GetCurrentItem()
+			if index > 0 {
+				actionList.SetCurrentItem(index - 1)
+			}
+		}
+		return event
+	})
 	// Create a Flex layout to divide the screen
 	mainLayout := tview.NewFlex().
 		AddItem(actionList, 0, 1, true).   // Left side: action list
