@@ -38,6 +38,7 @@ func main() {
 			if index > 0 {
 				actionList.SetCurrentItem(index - 1)
 			}
+			return nil
 		}
 		return event
 	})
@@ -66,28 +67,48 @@ func main() {
 			app.SetRoot(form, true).SetFocus(form)
 		}).
 		AddItem("Remove Task", "Remove a task", 'r', func() {
-			form := tview.NewForm()
-			form.
-				AddInputField("Task Number", "", 20, nil, nil).
-				AddButton("Remove", func() {
-					taskNumStr := form.GetFormItemByLabel("Task Number").(*tview.InputField).GetText()
-					taskNum, err := strconv.Atoi(taskNumStr)
-					if err != nil {
-						showErrorModal(app, "Invalid task number", mainLayout)
-						return
-					}
-					err = t.RemTask(taskNum)
-					if err != nil {
-						showErrorModal(app, fmt.Sprintf("Error: %v", err), mainLayout)
-					} else {
-						updateTaskList(t, taskListView) // Refresh task list view
-					}
+			// Create a list of tasks to remove
+			removeTaskList := tview.NewList()
+			for i, task := range t.Tasks {
+				taskStatus := "[red]Undone"
+				if task.Done {
+					taskStatus = "[green]Done"
+				}
+				removeTaskList.AddItem(fmt.Sprintf("%d. %s [%s]", i+1, task.Name, taskStatus), "", 0, nil)
+			}
+
+			// Set Vim-like navigation for the task removal list
+			removeTaskList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				switch event.Key() {
+				case tcell.KeyEnter: // Remove the selected task
+					index := removeTaskList.GetCurrentItem()
+					t.RemTask(index + 1)            // Tasks are 1-based, but the index is 0-based
+					updateTaskList(t, taskListView) // Refresh task list view
 					app.SetRoot(mainLayout, true).SetFocus(actionList)
-				}).
-				AddButton("Cancel", func() {
-					app.SetRoot(mainLayout, true).SetFocus(actionList)
-				})
-			app.SetRoot(form, true).SetFocus(form)
+					return nil
+				case tcell.KeyRune: // Check for character inputs
+					switch event.Rune() {
+					case 'j': // Move down
+						index := removeTaskList.GetCurrentItem()
+						if index < removeTaskList.GetItemCount()-1 {
+							removeTaskList.SetCurrentItem(index + 1)
+						}
+						return nil
+					case 'k': // Move up
+						index := removeTaskList.GetCurrentItem()
+						if index > 0 {
+							removeTaskList.SetCurrentItem(index - 1)
+						}
+						return nil
+					case 'q': // Cancel removal
+						app.SetRoot(mainLayout, true).SetFocus(actionList)
+						return nil
+					}
+				}
+				return event
+			})
+
+			app.SetRoot(removeTaskList, true).SetFocus(removeTaskList)
 		}).
 		AddItem("Toggle Task", "Toggle done for a task", 't', func() {
 			form := tview.NewForm()
