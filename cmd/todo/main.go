@@ -20,8 +20,22 @@ func main() {
 			app.Draw()
 		})
 
+	taskListView.SetBackgroundColor(tcell.ColorBlack)
+	taskListView.SetTextColor(tcell.ColorWhite)
+	taskListView.SetBorder(true)
+	taskListView.SetBorderColor(tcell.ColorDarkCyan)
+	taskListView.SetTitle("Tasks")
+	taskListView.SetTitleColor(tcell.ColorYellow)
+
 	// Create the main list for actions
 	actionList := tview.NewList()
+
+	actionList.SetBackgroundColor(tcell.ColorBlack)
+	actionList.SetMainTextColor(tcell.ColorWhite.TrueColor())
+	actionList.SetBorder(true)
+	actionList.SetBorderColor(tcell.ColorYellow)
+	actionList.SetTitle("Actions")
+	actionList.SetTitleColor(tcell.Color100)
 
 	// Add Vim-like keybindings for navigating the list
 	actionList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
