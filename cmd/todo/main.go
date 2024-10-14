@@ -13,22 +13,40 @@ func main() {
 	app := tview.NewApplication()
 
 	// Create a text view to display tasks
-	taskListView := tview.NewTextView().
-		SetDynamicColors(true).
-		SetTextAlign(tview.AlignLeft).
-		SetChangedFunc(func() {
-			app.Draw()
-		})
+	taskListView := tview.NewList().
+		SetSelectedBackgroundColor(tcell.ColorDarkOrange).
+		SetHighlightFullLine(true).
+		SetMainTextColor(tcell.ColorWhite)
 
 	taskListView.SetBackgroundColor(tcell.ColorBlack)
-	taskListView.SetTextColor(tcell.ColorWhite)
 	taskListView.SetBorder(true)
 	taskListView.SetBorderColor(tcell.ColorDarkCyan)
 	taskListView.SetTitle("Tasks")
 	taskListView.SetTitleColor(tcell.ColorYellow)
 
+	// Add Vim-like keybindings for navigating the list
+	taskListView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j': // Move down
+			index := taskListView.GetCurrentItem()
+			if index < taskListView.GetItemCount()-1 {
+				taskListView.SetCurrentItem(index + 1)
+			}
+			return nil
+		case 'k': // Move up
+			index := taskListView.GetCurrentItem()
+			if index > 0 {
+				taskListView.SetCurrentItem(index - 1)
+			}
+			return nil
+		}
+		return event
+	})
 	// Create the main list for actions
-	actionList := tview.NewList()
+	actionList := tview.NewList().
+		SetSelectedBackgroundColor(tcell.ColorDarkCyan).
+		SetHighlightFullLine(true).
+		SetMainTextColor(tcell.ColorWhite)
 
 	actionList.SetBackgroundColor(tcell.ColorBlack)
 	actionList.SetMainTextColor(tcell.ColorWhite.TrueColor())
@@ -37,7 +55,6 @@ func main() {
 	actionList.SetTitle("Actions")
 	actionList.SetTitleColor(tcell.Color100)
 	actionList.ShowSecondaryText(false)
-	actionList.SetSelectedBackgroundColor(tcell.ColorDarkCyan)
 
 	// Add Vim-like keybindings for navigating the list
 	actionList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -73,7 +90,7 @@ func main() {
 					task := form.GetFormItemByLabel("Task").(*tview.InputField).GetText()
 					if task != "" {
 						t.AddTask(task)
-						updateTaskList(t, taskListView) // Refresh task list view
+						updateTaskList(t, taskListView)
 					}
 					app.SetRoot(mainLayout, true).SetFocus(actionList)
 				}).
@@ -89,48 +106,25 @@ func main() {
 			app.SetRoot(modalLayout, true).SetFocus(form) // Show the form with the layout
 		}).
 		AddItem("Remove Task", "Remove a task", 'r', func() {
-			// Create a list of tasks to remove
-			removeTaskList := tview.NewList()
-			for i, task := range t.Tasks {
-				taskStatus := "[red]Undone"
-				if task.Done {
-					taskStatus = "[green]Done"
-				}
-				removeTaskList.AddItem(fmt.Sprintf("%d. %s [%s]", i+1, task.Name, taskStatus), "", 0, nil)
-			}
+			// Set focus to the taskListView after selecting "Remove Task"
+			app.SetRoot(mainLayout, true).SetFocus(taskListView)
 
-			// Set Vim-like navigation for the task removal list
-			removeTaskList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-				switch event.Key() {
-				case tcell.KeyEnter: // Remove the selected task
-					index := removeTaskList.GetCurrentItem()
-					t.RemTask(index + 1)            // Tasks are 1-based, but the index is 0-based
-					updateTaskList(t, taskListView) // Refresh task list view
-					app.SetRoot(mainLayout, true).SetFocus(actionList)
-					return nil
-				case tcell.KeyRune: // Check for character inputs
-					switch event.Rune() {
-					case 'j': // Move down
-						index := removeTaskList.GetCurrentItem()
-						if index < removeTaskList.GetItemCount()-1 {
-							removeTaskList.SetCurrentItem(index + 1)
-						}
-						return nil
-					case 'k': // Move up
-						index := removeTaskList.GetCurrentItem()
-						if index > 0 {
-							removeTaskList.SetCurrentItem(index - 1)
-						}
-						return nil
-					case 'q': // Cancel removal
-						app.SetRoot(mainLayout, true).SetFocus(actionList)
-						return nil
+			// Capture "d" key press to delete the currently highlighted task
+			taskListView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				switch event.Rune() {
+				case 'd': // Press "d" to delete the task
+					index := taskListView.GetCurrentItem()
+					if index < len(t.Tasks) {
+						// Remove the selected task
+						t.RemTask(index + 1)            // Tasks are 1-based
+						updateTaskList(t, taskListView) // Refresh the task list display
+						taskListView.SetCurrentItem(0)  // Reset the task list selection
+						app.SetFocus(actionList)        // Return focus to the action list
 					}
+					return nil
 				}
 				return event
 			})
-
-			app.SetRoot(removeTaskList, true).SetFocus(removeTaskList)
 		}).
 		AddItem("Toggle Task", "Toggle done for a task", 't', func() {
 			// Create a list of tasks to toggle
@@ -189,16 +183,15 @@ func main() {
 	}
 }
 
-// Function to update the task list display
-func updateTaskList(t *todo.Todo, taskListView *tview.TextView) {
-	taskListView.Clear()
-	fmt.Fprintln(taskListView, "[::b]Tasks:")
+func updateTaskList(t *todo.Todo, taskListView *tview.List) {
+	taskListView.Clear() // Clear the current items in the list
 	for i, task := range t.Tasks {
 		status := "[red]Undone"
 		if task.Done {
 			status = "[green]Done"
 		}
-		fmt.Fprintf(taskListView, "%d. %s [%s]\n", i+1, task.Name, status)
+		// Add the task as an item to the List view
+		taskListView.AddItem(fmt.Sprintf("%d. %s", i+1, task.Name), status, 0, nil)
 	}
 }
 
