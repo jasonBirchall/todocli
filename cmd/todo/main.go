@@ -36,6 +36,8 @@ func main() {
 	actionList.SetBorderColor(tcell.ColorYellow)
 	actionList.SetTitle("Actions")
 	actionList.SetTitleColor(tcell.Color100)
+	actionList.ShowSecondaryText(false)
+	actionList.SetSelectedBackgroundColor(tcell.ColorDarkCyan)
 
 	// Add Vim-like keybindings for navigating the list
 	actionList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -57,8 +59,8 @@ func main() {
 	})
 	// Create a Flex layout to divide the screen
 	mainLayout := tview.NewFlex().
-		AddItem(actionList, 0, 1, true).   // Left side: action list
-		AddItem(taskListView, 0, 2, false) // Right side: task list display
+		AddItem(actionList, 0, 1, true). // Left side: action list
+		AddItem(taskListView, 0, 5, false)
 
 	// Populate the action list with options
 	actionList.
