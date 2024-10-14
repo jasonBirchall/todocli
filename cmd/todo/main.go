@@ -49,6 +49,7 @@ func main() {
 	// Populate the action list with options
 	actionList.
 		AddItem("Add Task", "Add a new task", 'a', func() {
+			// Create a new Flex layout for the form and task list
 			form := tview.NewForm()
 			form.
 				AddInputField("Task", "", 20, nil, nil).
@@ -63,7 +64,13 @@ func main() {
 				AddButton("Cancel", func() {
 					app.SetRoot(mainLayout, true).SetFocus(actionList)
 				})
-			app.SetRoot(form, true).SetFocus(form)
+
+			// Show the form alongside the task list by using a Modal
+			modalLayout := tview.NewFlex().
+				AddItem(mainLayout, 0, 1, false). // Keep the main layout visible
+				AddItem(form, 30, 1, true)        // Display the form on the right
+
+			app.SetRoot(modalLayout, true).SetFocus(form) // Show the form with the layout
 		}).
 		AddItem("Remove Task", "Remove a task", 'r', func() {
 			// Create a list of tasks to remove
@@ -108,7 +115,6 @@ func main() {
 			})
 
 			app.SetRoot(removeTaskList, true).SetFocus(removeTaskList)
-
 		}).
 		AddItem("Toggle Task", "Toggle done for a task", 't', func() {
 			// Create a list of tasks to toggle
